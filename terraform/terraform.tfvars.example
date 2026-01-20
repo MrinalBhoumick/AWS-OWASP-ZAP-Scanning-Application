@@ -1,0 +1,4 @@
+db_user       = "appuser"
+db_pass       = "your-secure-password"
+cluster_name  = "enterprise-eks"
+region        = "us-west-2"
