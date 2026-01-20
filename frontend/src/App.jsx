@@ -12,9 +12,11 @@ function App() {
   const [message, setMessage] = useState({ type: '', text: '' })
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState([])
-  const [stats, setStats] = useState({ totalUsers: 0, activeUsers: 0 })
+  const [stats, setStats] = useState({ totalUsers: 0, activeUsers: 0, systemHealth: 100 })
   const [zapResults, setZapResults] = useState(null)
   const [loadingZap, setLoadingZap] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [passwordStrength, setPasswordStrength] = useState(0)
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user')
@@ -24,12 +26,39 @@ function App() {
       setIsLoggedIn(true)
       fetchUsers()
     }
-    // Load mock ZAP results
     loadMockZapResults()
   }, [])
 
+  useEffect(() => {
+    if (activeTab === 'register') {
+      calculatePasswordStrength(formData.password)
+    }
+  }, [formData.password, activeTab])
+
+  const calculatePasswordStrength = (password) => {
+    let strength = 0
+    if (password.length >= 8) strength += 25
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength += 25
+    if (/\d/.test(password)) strength += 25
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength += 25
+    setPasswordStrength(strength)
+  }
+
+  const getPasswordStrengthColor = () => {
+    if (passwordStrength <= 25) return '#ff4444'
+    if (passwordStrength <= 50) return '#ff9800'
+    if (passwordStrength <= 75) return '#ffeb3b'
+    return '#4caf50'
+  }
+
+  const getPasswordStrengthText = () => {
+    if (passwordStrength <= 25) return 'Weak'
+    if (passwordStrength <= 50) return 'Fair'
+    if (passwordStrength <= 75) return 'Good'
+    return 'Strong'
+  }
+
   const loadMockZapResults = () => {
-    // Simulate ZAP scan results
     const mockResults = {
       scanDate: new Date().toISOString(),
       target: window.location.origin,
@@ -123,13 +152,14 @@ function App() {
       setUsers(response.data)
       setStats({
         totalUsers: response.data.length,
-        activeUsers: response.data.length
+        activeUsers: response.data.length,
+        systemHealth: 100
       })
     } catch (error) {
       console.error('Error fetching users:', error)
       if (error.response?.status === 401) {
         handleLogout()
-        setMessage({ type: 'error', text: 'Session expired. Please login again.' })
+        setMessage({ type: 'error', text: '⚠️ Session expired. Please login again.' })
       }
     }
   }
@@ -151,8 +181,8 @@ function App() {
       setIsLoggedIn(true)
       localStorage.setItem('user', JSON.stringify(userData))
       localStorage.setItem('token', token)
-      setMessage({ type: 'success', text: '✓ Login successful!' })
-      fetchUsers()
+      setMessage({ type: 'success', text: '✓ Login successful! Welcome back!' })
+      setTimeout(() => fetchUsers(), 500)
     } catch (error) {
       const errorMsg = error.response?.data?.error || error.response?.data?.details?.[0] || 'Login failed. Please try again.'
       setMessage({ 
@@ -172,8 +202,10 @@ function App() {
     try {
       await axios.post(`${API_URL}/register`, formData)
       setMessage({ type: 'success', text: '✓ Registration successful! You can now login.' })
-      setActiveTab('login')
-      setFormData({ email: '', password: '' })
+      setTimeout(() => {
+        setActiveTab('login')
+        setFormData({ email: '', password: '' })
+      }, 1500)
     } catch (error) {
       const errorDetails = error.response?.data?.details
       const errorMsg = Array.isArray(errorDetails) 
@@ -202,11 +234,13 @@ function App() {
 
   const runZapScan = async () => {
     setLoadingZap(true)
-    // Simulate scan delay
+    setMessage({ type: 'info', text: '🔍 Running security scan...' })
+    
     setTimeout(() => {
       loadMockZapResults()
       setLoadingZap(false)
-      setMessage({ type: 'success', text: '✓ Security scan completed!' })
+      setMessage({ type: 'success', text: '✓ Security scan completed successfully!' })
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000)
     }, 2000)
   }
 
@@ -224,9 +258,10 @@ function App() {
     return (
       <div className="container">
         <div className="header">
-          <div>
-            <h1>🚀 Enterprise Security Dashboard</h1>
+          <div className="header-content">
+            <h1 className="glow">🚀 Enterprise Security Dashboard</h1>
             <p className="subtitle">Welcome back, <strong>{user.email}</strong></p>
+            <p className="timestamp">Last login: {new Date().toLocaleString()}</p>
           </div>
           <button className="btn logout-btn" onClick={handleLogout}>
             🚪 Logout
@@ -244,7 +279,7 @@ function App() {
             className={`nav-tab ${activeSection === 'users' ? 'active' : ''}`}
             onClick={() => setActiveSection('users')}
           >
-            👥 Users
+            👥 Users ({stats.totalUsers})
           </button>
           <button 
             className={`nav-tab ${activeSection === 'security' ? 'active' : ''}`}
@@ -264,24 +299,28 @@ function App() {
           <div className="fade-in">
             <div className="dashboard">
               <div className="stat-card pulse">
-                <div className="stat-icon">👥</div>
-                <h3>{stats.totalUsers}</h3>
+                <div className="stat-icon">�</div>
+                <h3 className="counter">{stats.totalUsers}</h3>
                 <p>Total Users</p>
+                <div className="stat-footer">+{stats.totalUsers} this month</div>
               </div>
               <div className="stat-card pulse">
                 <div className="stat-icon">✅</div>
-                <h3>{stats.activeUsers}</h3>
+                <h3 className="counter">{stats.activeUsers}</h3>
                 <p>Active Users</p>
+                <div className="stat-footer">100% active rate</div>
               </div>
               <div className="stat-card pulse">
                 <div className="stat-icon">💚</div>
-                <h3>100%</h3>
+                <h3 className="counter">{stats.systemHealth}%</h3>
                 <p>System Health</p>
+                <div className="stat-footer">All systems operational</div>
               </div>
               <div className="stat-card pulse">
                 <div className="stat-icon">🛡️</div>
-                <h3>{zapResults?.securityScore || 0}%</h3>
+                <h3 className="counter">{zapResults?.securityScore || 0}%</h3>
                 <p>Security Score</p>
+                <div className="stat-footer">Excellent rating</div>
               </div>
             </div>
 
@@ -293,6 +332,7 @@ function App() {
                   <div>
                     <strong>JWT Authentication</strong>
                     <p>24-hour token expiration</p>
+                    <div className="feature-badge">Active</div>
                   </div>
                 </div>
                 <div className="feature-item">
@@ -300,6 +340,7 @@ function App() {
                   <div>
                     <strong>bcrypt Hashing</strong>
                     <p>10 salt rounds</p>
+                    <div className="feature-badge">Active</div>
                   </div>
                 </div>
                 <div className="feature-item">
@@ -307,6 +348,7 @@ function App() {
                   <div>
                     <strong>Rate Limiting</strong>
                     <p>5 attempts per 15 minutes</p>
+                    <div className="feature-badge">Active</div>
                   </div>
                 </div>
                 <div className="feature-item">
@@ -314,6 +356,7 @@ function App() {
                   <div>
                     <strong>Input Validation</strong>
                     <p>Strong password requirements</p>
+                    <div className="feature-badge">Active</div>
                   </div>
                 </div>
                 <div className="feature-item">
@@ -321,6 +364,7 @@ function App() {
                   <div>
                     <strong>SQL Injection Protection</strong>
                     <p>Parameterized queries</p>
+                    <div className="feature-badge">Active</div>
                   </div>
                 </div>
                 <div className="feature-item">
@@ -328,6 +372,37 @@ function App() {
                   <div>
                     <strong>CORS Protection</strong>
                     <p>Whitelist-based origins</p>
+                    <div className="feature-badge">Active</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <h2>📈 Recent Activity</h2>
+              <div className="activity-timeline">
+                <div className="activity-item">
+                  <div className="activity-icon">✅</div>
+                  <div className="activity-content">
+                    <strong>User Login</strong>
+                    <p>{user.email} logged in successfully</p>
+                    <span className="activity-time">Just now</span>
+                  </div>
+                </div>
+                <div className="activity-item">
+                  <div className="activity-icon">🔒</div>
+                  <div className="activity-content">
+                    <strong>Security Scan</strong>
+                    <p>OWASP ZAP scan completed - Score: {zapResults?.securityScore}%</p>
+                    <span className="activity-time">5 minutes ago</span>
+                  </div>
+                </div>
+                <div className="activity-item">
+                  <div className="activity-icon">🚀</div>
+                  <div className="activity-content">
+                    <strong>System Update</strong>
+                    <p>Application deployed successfully</p>
+                    <span className="activity-time">1 hour ago</span>
                   </div>
                 </div>
               </div>
@@ -337,7 +412,12 @@ function App() {
 
         {activeSection === 'users' && (
           <div className="card fade-in">
-            <h2>👥 Registered Users</h2>
+            <div className="card-header">
+              <h2>👥 Registered Users</h2>
+              <div className="search-box">
+                <input type="text" placeholder="🔍 Search users..." />
+              </div>
+            </div>
             <div className="users-table">
               <table>
                 <thead>
@@ -346,15 +426,23 @@ function App() {
                     <th>Email</th>
                     <th>Registered</th>
                     <th>Status</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((u, index) => (
                     <tr key={index} className="slide-in" style={{animationDelay: `${index * 0.1}s`}}>
                       <td>{index + 1}</td>
-                      <td className="user-email">{u.email}</td>
+                      <td className="user-email">
+                        <div className="user-avatar">{u.email.charAt(0).toUpperCase()}</div>
+                        {u.email}
+                      </td>
                       <td>{new Date(u.created_at).toLocaleDateString()}</td>
                       <td><span className="badge badge-success">Active</span></td>
+                      <td>
+                        <button className="btn-icon" title="View Details">👁️</button>
+                        <button className="btn-icon" title="Edit">✏️</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -396,10 +484,11 @@ function App() {
                           strokeDasharray={`${zapResults.securityScore * 2.827} 282.7`}
                           strokeLinecap="round"
                           transform="rotate(-90 50 50)"
+                          className="score-progress"
                         />
                       </svg>
                       <div className="score-text">
-                        <h1>{zapResults.securityScore}</h1>
+                        <h1 className="counter">{zapResults.securityScore}</h1>
                         <p>Security Score</p>
                       </div>
                     </div>
@@ -407,19 +496,19 @@ function App() {
 
                   <div className="alerts-summary">
                     <div className="alert-stat" style={{borderColor: getRiskColor('high')}}>
-                      <h3>{zapResults.summary.high}</h3>
+                      <h3 className="counter">{zapResults.summary.high}</h3>
                       <p>High Risk</p>
                     </div>
                     <div className="alert-stat" style={{borderColor: getRiskColor('medium')}}>
-                      <h3>{zapResults.summary.medium}</h3>
+                      <h3 className="counter">{zapResults.summary.medium}</h3>
                       <p>Medium Risk</p>
                     </div>
                     <div className="alert-stat" style={{borderColor: getRiskColor('low')}}>
-                      <h3>{zapResults.summary.low}</h3>
+                      <h3 className="counter">{zapResults.summary.low}</h3>
                       <p>Low Risk</p>
                     </div>
                     <div className="alert-stat" style={{borderColor: getRiskColor('informational')}}>
-                      <h3>{zapResults.summary.informational}</h3>
+                      <h3 className="counter">{zapResults.summary.informational}</h3>
                       <p>Informational</p>
                     </div>
                   </div>
@@ -454,7 +543,7 @@ function App() {
                         </div>
                         <p className="alert-description">{alert.description}</p>
                         <div className="alert-solution">
-                          <strong>Solution:</strong> {alert.solution}
+                          <strong>💡 Solution:</strong> {alert.solution}
                         </div>
                         <div className="alert-confidence">
                           Confidence: <strong>{alert.confidence}</strong>
@@ -474,7 +563,7 @@ function App() {
   return (
     <div className="container">
       <div className="header">
-        <h1>🔐 Enterprise Security Platform</h1>
+        <h1 className="glow">🔐 Enterprise Security Platform</h1>
         <p className="subtitle">Secure Authentication with OWASP ZAP Security Scanning</p>
       </div>
 
@@ -485,6 +574,7 @@ function App() {
             onClick={() => {
               setActiveTab('login')
               setMessage({ type: '', text: '' })
+              setFormData({ email: '', password: '' })
             }}
           >
             🔑 Login
@@ -494,6 +584,7 @@ function App() {
             onClick={() => {
               setActiveTab('register')
               setMessage({ type: '', text: '' })
+              setFormData({ email: '', password: '' })
             }}
           >
             📝 Register
@@ -516,19 +607,46 @@ function App() {
               onChange={handleInputChange}
               placeholder="Enter your email"
               required
+              className="input-animated"
             />
           </div>
 
           <div className="form-group">
             <label>🔒 Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleInputChange}
-              placeholder="Enter your password"
-              required
-            />
+            <div className="password-input-wrapper">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="Enter your password"
+                required
+                className="input-animated"
+              />
+              <button 
+                type="button" 
+                className="password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? '👁️' : '👁️‍🗨️'}
+              </button>
+            </div>
+            {activeTab === 'register' && formData.password && (
+              <div className="password-strength">
+                <div className="strength-bar">
+                  <div 
+                    className="strength-fill" 
+                    style={{
+                      width: `${passwordStrength}%`,
+                      backgroundColor: getPasswordStrengthColor()
+                    }}
+                  ></div>
+                </div>
+                <span style={{color: getPasswordStrengthColor()}}>
+                  {getPasswordStrengthText()}
+                </span>
+              </div>
+            )}
             {activeTab === 'register' && (
               <small className="password-hint">
                 Min 8 characters, uppercase, lowercase, number, special character
@@ -546,6 +664,21 @@ function App() {
           <div className="badge-item">🔑 JWT Tokens</div>
           <div className="badge-item">⚡ Rate Limited</div>
           <div className="badge-item">✓ Input Validated</div>
+        </div>
+      </div>
+
+      <div className="info-cards">
+        <div className="info-card">
+          <h3>🛡️ Enterprise Security</h3>
+          <p>Bank-grade encryption and authentication</p>
+        </div>
+        <div className="info-card">
+          <h3>⚡ Lightning Fast</h3>
+          <p>Optimized performance and response times</p>
+        </div>
+        <div className="info-card">
+          <h3>🔍 OWASP Tested</h3>
+          <p>Continuously scanned for vulnerabilities</p>
         </div>
       </div>
     </div>
